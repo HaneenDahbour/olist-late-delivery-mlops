@@ -1,0 +1,63 @@
+﻿# ==============================
+# Data
+# ==============================
+# Raw Kaggle datasets are stored locally and are not committed.
+data/*.csv
+data/*.zip
+
+# Keep the data directory in Git
+!data/.gitkeep
+
+# ==============================
+# Python
+# ==============================
+__pycache__/
+*.py[cod]
+*.pyo
+
+.venv/
+venv/
+env/
+
+# ==============================
+# Environment variables / secrets
+# ==============================
+.env
+*.env
+.env.*
+
+# ==============================
+# Jupyter
+# ==============================
+.ipynb_checkpoints/
+
+# ==============================
+# IDEs / Editors
+# ==============================
+.vscode/
+.idea/
+
+# ==============================
+# Operating system
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Logs
+# ==============================
+*.log
+
+# ==============================
+# Local databases / generated files
+# ==============================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================
+# Python build artifacts
+# ==============================
+build/
+dist/
+*.egg-info/
