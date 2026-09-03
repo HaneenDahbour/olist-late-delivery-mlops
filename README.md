@@ -1,200 +1,126 @@
 ﻿# Olist Late Delivery Prediction - MLOps Project
 
-End-to-end MLOps project based on the **Brazilian E-Commerce Public Dataset by Olist**.
+End-to-end MLOps project using the Brazilian E-Commerce Public Dataset by Olist.
 
-The project starts with relational database ingestion and SQL validation and will progressively develop into a machine-learning system for predicting whether an e-commerce order will be delivered late.
+## Objective
 
-## Project Objective
+Predict whether an e-commerce order will be delivered late while preventing data leakage and evaluating performance honestly on future chronological data.
 
-The goal is to build a reproducible machine-learning pipeline capable of answering:
+## Task 1 - Relational Data Foundation
 
-> **Will an order be delivered late or on time?**
+Completed:
 
-The project is developed incrementally, beginning with data infrastructure before moving into exploratory data analysis, feature engineering, model development, deployment, and monitoring.
+- PostgreSQL 16 with Docker Compose
+- nine Olist relational tables
+- SQL schema creation and bulk ingestion
+- data-integrity validation
+- Python/PostgreSQL integration
+- order-level relational dataset construction
 
-## Current Stage
+## Task 2 - Notebook ML Workflow
 
-### Task 1 - Relational Database Setup and Data Ingestion
+Completed with six notebooks:
 
-Progress:
+1. `01_read_and_join.ipynb` - build the order-level ML table
+2. `02_create_labels.ipynb` - create the late-delivery target
+3. `03_train_validation_test_split.ipynb` - chronological split
+4. `04_train_eda.ipynb` - training-only EDA
+5. `05_feature_engineering.ipynb` - feature engineering and fitted preprocessing
+6. `06_train_tune_evaluate.ipynb` - baseline, validation tuning, and final test
 
-- [x] Create project workspace
-- [x] Download the Olist dataset
-- [x] Store the raw CSV files locally
-- [x] Inspect source CSV schemas
-- [x] Identify the main relational links
-- [x] Configure PostgreSQL using Docker Compose
-- [x] Start the PostgreSQL container
-- [x] Validate PostgreSQL connectivity
-- [x] Create relational database tables
-- [x] Load CSV data into PostgreSQL
-- [x] Validate row counts and data integrity
-- [ ] Run SQL queries
-- [x] Test joins between related tables
-- [ ] Connect PostgreSQL to Python
+## Chronological Split
 
-## Dataset
+- Train: 67,529 rows
+- Validation: 14,470 rows
+- Test: 14,471 rows
+- Cross-split overlap: 0
 
-The project uses the **Brazilian E-Commerce Public Dataset by Olist**.
+Detailed EDA is performed on training data only.
 
-The source data contains:
+## EDA Controls
 
-- Customers
-- Orders
-- Order items
-- Products
-- Sellers
-- Payments
-- Reviews
-- Geolocation
-- Product category translations
+Notebook 4 includes:
 
-Raw CSV files are stored locally under `data/` and are intentionally excluded from Git version control.
+- missing-value analysis
+- target imbalance
+- numerical distributions
+- IQR outlier audit
+- rare and high-cardinality categories
+- categorical crosstabs
+- geographic analysis
+- temporal and seasonality analysis
+- leakage auditing
 
-Expected files:
+No holiday feature is invented because the source dataset contains no authoritative Brazilian holiday calendar.
 
-```text
-olist_customers_dataset.csv
-olist_geolocation_dataset.csv
-olist_order_items_dataset.csv
-olist_order_payments_dataset.csv
-olist_order_reviews_dataset.csv
-olist_orders_dataset.csv
-olist_products_dataset.csv
-olist_sellers_dataset.csv
-product_category_name_translation.csv
+## Feature Engineering
 
-## Local Python Environment
+Notebook 5 starts with 51 prediction-time predictors and produces 184 encoded model features.
 
-The project uses a dedicated Python virtual environment to isolate project dependencies from the system Python installation.
+The fitted preprocessing pipeline uses:
 
-Python version:
+- median numerical imputation
+- missing-value indicators
+- standardization
+- categorical imputation
+- one-hot encoding
+- infrequent-category handling
 
-```text
-Python 3.14.5
-```
+The preprocessor is fitted on training data only.
 
-Create the environment:
+Validation and test use the same saved fitted object with `.transform()` and never refit preprocessing.
 
-```powershell
-py -3.14 -m venv .venv
-```
+## Leakage Prevention
 
-Activate it on Windows PowerShell:
+Excluded predictors include:
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+- delivery outcome timestamps
+- `delivery_delay_days`
+- post-delivery review information
+- `is_late`
+- order, customer, and seller identifiers
 
-Install project dependencies:
+## Model Selection
 
-```powershell
-pip install -r requirements.txt
-```
+Notebook 6 begins with a dummy baseline.
 
-The `.venv/` directory is excluded from Git. Only `requirements.txt` is version-controlled so the Python environment can be reproduced on another machine.
+Selected model:
 
-## Database Architecture
+- Balanced Logistic Regression
+- C = 0.1
+- Threshold = 0.692968
 
-The Olist dataset is delivered as raw CSV files, but the source data is relational. PostgreSQL is used as the structured data layer before exploratory analysis and machine-learning feature engineering.
+Validation:
 
-Current data flow:
+- Baseline PR-AUC: 0.043124
+- Model PR-AUC: 0.134065
+- ROC-AUC: 0.775557
 
-```text
-Olist Kaggle CSV files
-        |
-        v
-Raw data profiling
-        |
-        v
-PostgreSQL 16 in Docker
-        |
-        v
-Relational Olist tables
-        |
-        v
-Data validation
-        |
-        v
-SQL / EDA
-        |
-        v
-Feature engineering
-        |
-        v
-ML training pipeline
-```
+## Final Test Results
 
-PostgreSQL runs inside Docker so the database environment can be recreated consistently across machines.
+The chronological test set is opened only after model and threshold selection are frozen.
 
-## Database Schema
+- Test rows: 14,471
+- Late orders: 620
+- PR-AUC: 0.081893
+- ROC-AUC: 0.657710
+- Precision: 0.071931
+- Recall: 0.280645
+- F1: 0.114511
+- PR-AUC lift: 1.91x
 
-The relational schema is defined in `sql/create_tables.sql`.
+The weaker final test performance is retained rather than used for further tuning.
 
-Nine source tables are created:
+## Reproducibility
 
-- `customers`
-- `orders`
-- `order_items`
-- `order_payments`
-- `order_reviews`
-- `products`
-- `sellers`
-- `geolocation`
-- `product_category_translation`
+Run notebooks in order:
 
-### Schema Decisions From Data Profiling
+`01 -> 02 -> 03 -> 04 -> 05 -> 06`
 
-- `customer_id` is unique across 99,441 customer rows.
-- `order_id` is unique across 99,441 order rows.
-- `(order_id, order_item_id)` is used as the composite primary key for order items.
-- `(order_id, payment_sequential)` is used as the composite primary key for payments.
-- `review_id` alone is not unique; 814 duplicated values were detected.
-- `(review_id, order_id)` is unique and is used as the composite primary key for reviews.
-- Delivery timestamps containing legitimate source missing values remain nullable.
-- The geolocation dataset contains 261,831 exact duplicate rows, so no artificial raw primary key is imposed.
-- Two product category values are absent from the translation file, so that relationship is not enforced with a foreign key.
-- ZIP-code prefixes are stored as character data to preserve leading zeros.
-
-## Data Ingestion
-
-Bulk ingestion is defined in `sql/load_data.sql`.
-
-PostgreSQL `COPY` is used instead of row-by-row inserts for efficient loading. The load runs inside a transaction using `BEGIN` and `COMMIT`, and parent tables are loaded before child tables so foreign-key constraints remain valid.
-
-## Data Validation
-
-Post-ingestion validation is defined in `sql/validate_data.sql`.
-
-| Table | Rows |
-| --- | ---: |
-| customers | 99,441 |
-| geolocation | 1,000,163 |
-| order_items | 112,650 |
-| order_payments | 103,886 |
-| order_reviews | 99,224 |
-| orders | 99,441 |
-| product_category_translation | 71 |
-| products | 32,951 |
-| sellers | 3,095 |
-
-The PostgreSQL row counts match the original CSV profiling results.
-
-The orders-to-customers relationship check also confirmed that all 99,441 orders reference an existing customer.
-
-## Reproducing the Database
-
-The running PostgreSQL database itself is not committed to Git. Instead, the repository stores the configuration and scripts required to recreate it.
-
-```text
-1. Obtain the Olist CSV dataset
-2. Place the CSV files under data/
-3. Start PostgreSQL with Docker Compose
-4. Apply sql/create_tables.sql
-5. Run sql/load_data.sql
-6. Run sql/validate_data.sql
-```
+Generated Parquet, JSON, transformer, and model artifacts remain local and are excluded from Git.
 
 ## Next Stage
 
-The next milestone is SQL exploratory analysis and Python-to-PostgreSQL integration, followed by construction of the machine-learning training dataset.
+Task 2 remains notebook-based.
+
+Production scripts, automated testing, CI/CD, deployment, and monitoring belong to later MLOps tasks.
