@@ -67,3 +67,9 @@ backups/
 
 # Reproducible processed-data artifacts
 data/processed/*.parquet
+
+# ==============================
+# Task 2 generated notebook artifacts
+# ==============================
+artifacts/*
+!artifacts/.gitkeep
