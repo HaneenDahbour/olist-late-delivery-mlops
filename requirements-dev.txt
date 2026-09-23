@@ -1,0 +1,20 @@
+# Development-only dependencies: notebook tooling, testing, linting.
+# Never installed inside the API container — see Dockerfile, which
+# installs requirements.txt only.
+-r requirements.txt
+
+# Notebook workflow (Task 1/2)
+jupyter==1.1.1
+matplotlib==3.11.1
+seaborn==0.13.2
+
+# Testing
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx==0.28.1
+
+# Lint / format / pre-commit
+ruff==0.16.8
+black==26.5.1
+mypy==2.3.1
+pre-commit==4.6.2

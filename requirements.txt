@@ -1,10 +1,34 @@
-﻿numpy==2.5.2
+# Runtime dependencies only — this is what ships inside the API
+# container (see Dockerfile). Development/notebook-only tools live in
+# requirements-dev.txt and are never installed in the service image.
+numpy==2.5.2
 pandas==3.0.5
-SQLAlchemy==2.0.52
-psycopg[binary]==3.3.4
-jupyter==1.1.1
-pyarrow==25.0.1
-matplotlib==3.11.1
-seaborn==0.13.2
 scikit-learn==1.9.0
 joblib==1.5.3
+pyarrow==25.0.1
+SQLAlchemy==2.0.52
+psycopg[binary]==3.3.4
+PyYAML==6.0.3
+
+# API
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-multipart==0.0.32
+
+# Experiment tracking, model registry, data/artifact versioning
+mlflow==3.16.1
+dvc[s3]==3.67.1
+# Pinned below dvc[s3]'s aiobotocore ceiling (botocore<1.43.76); boto3
+# pulls in a matching botocore, so this can't float independently.
+boto3==1.43.75
+
+# Data validation
+# 0.18.x caps numpy<2.0, which conflicts with numpy==2.5.2 above (pinned
+# for notebook parity) — 1.23.x is the first line built for numpy 2.x.
+great-expectations==1.23.1
+
+# Logging & monitoring
+python-json-logger==4.2.0
+prometheus-client==0.26.0

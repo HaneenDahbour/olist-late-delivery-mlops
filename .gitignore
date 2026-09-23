@@ -16,8 +16,21 @@ __pycache__/
 *.pyo
 
 .venv/
+.venv-service/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ==============================
+# MLflow / DVC local state
+# ==============================
+mlruns/
+mlartifacts/
+.dvc/cache/
+.dvc/tmp/
 
 # ==============================
 # Environment variables / secrets
@@ -47,6 +60,8 @@ Thumbs.db
 # Logs
 # ==============================
 *.log
+logs/predictions/*.jsonl
+logs/service/*.log
 
 # ==============================
 # Local databases / generated files
