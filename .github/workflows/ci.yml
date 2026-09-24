@@ -52,3 +52,37 @@ jobs:
       # (a machine that has run the notebooks, e.g. locally).
       - name: pytest
         run: pytest -v
+
+  build:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t olist-mlops-api:${{ github.sha }} .
+
+      # Pushes to GitHub Container Registry using the token GitHub issues
+      # automatically for every run — no manually-configured registry
+      # secret needed. Only pushes from main, after lint+test passed, and
+      # never from a pull request (a PR's GITHUB_TOKEN can't write packages).
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/$OWNER/olist-mlops-api
+          docker tag olist-mlops-api:${{ github.sha }} $IMAGE:${{ github.sha }}
+          docker tag olist-mlops-api:${{ github.sha }} $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest

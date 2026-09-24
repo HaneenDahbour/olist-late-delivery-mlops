@@ -61,6 +61,31 @@ services:
       mc mb --ignore-existing local/olist-mlops-artifacts
       "
 
+  dvc-pull:
+    # Populates ./data/processed and ./artifacts from the MinIO remote so
+    # register-model (below) has real files, not just .dvc pointers, to
+    # read — without requiring a separate `dvc pull` command on the host
+    # first. This only has something to pull because this repo's MinIO
+    # volume already has the objects `dvc push` put there; see the
+    # one-command-startup note in README.md for what a truly empty
+    # artifact store would need instead.
+    build:
+      context: .
+      dockerfile: docker/dvc.Dockerfile
+    container_name: olist-dvc-pull
+
+    depends_on:
+      create-bucket:
+        condition: service_completed_successfully
+
+    environment:
+      AWS_ACCESS_KEY_ID: ${ARTIFACT_STORE_ACCESS_KEY:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${ARTIFACT_STORE_SECRET_KEY:-minioadmin123}
+      AWS_ENDPOINT_URL_S3: http://minio:9000
+
+    volumes:
+      - .:/workspace
+
   mlflow:
     build:
       context: .
@@ -105,6 +130,8 @@ services:
     depends_on:
       mlflow:
         condition: service_healthy
+      dvc-pull:
+        condition: service_completed_successfully
 
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
