@@ -154,6 +154,6 @@ def validate_orders(frame: pd.DataFrame, contract: dict) -> ValidationResult:
     errors = [
         f"{r.expectation_config.kwargs.get('column')}: {r.expectation_config.type} failed"
         for r in result.results
-        if not r.success
+        if not r.success and r.expectation_config is not None
     ]
     return ValidationResult(success=False, errors=errors)

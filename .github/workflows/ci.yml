@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          pip install --no-deps -e .
+
+      - name: ruff
+        run: ruff check src app scripts tests
+
+      - name: black --check
+        run: black --check src app scripts tests
+
+      - name: mypy
+        run: mypy src app scripts
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          pip install --no-deps -e .
+
+      # tests/conftest.py skips notebook-parity/model/API tests when the
+      # gitignored local artifacts and processed data (produced by running
+      # notebooks 01-06) aren't present, which is always true in CI. Those
+      # skips are expected here — this job proves the pure-Python unit/data
+      # tests pass; parity/model/API tests only run where the artifacts do
+      # (a machine that has run the notebooks, e.g. locally).
+      - name: pytest
+        run: pytest -v

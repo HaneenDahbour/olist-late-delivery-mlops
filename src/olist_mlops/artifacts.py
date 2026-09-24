@@ -118,6 +118,7 @@ def _load_from_mlflow_registry(config: dict) -> ModelArtifacts | None:
         sklearn_model = mlflow.sklearn.load_model(model_uri)
 
         run_id = latest.run_id
+        assert run_id is not None, "model version was not created from a run"
         preprocessor_path = client.download_artifacts(run_id, "preprocessor/preprocessor.joblib")
         feature_list_path = client.download_artifacts(run_id, "feature_list.json")
 

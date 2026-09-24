@@ -27,7 +27,7 @@ def build_order_request_model(contract: dict) -> type[BaseModel]:
     for column in contract["timestamp_features"]:
         fields[column] = (datetime | None, None)
 
-    return create_model(
+    return create_model(  # type: ignore[call-overload,no-any-return]
         "OrderRequest",
         __base__=_ForbidExtraBase,
         **fields,

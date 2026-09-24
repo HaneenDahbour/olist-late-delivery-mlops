@@ -85,7 +85,7 @@ def create_app(config: dict | None = None) -> FastAPI:
         start = time.perf_counter()
         route = "/predict"
         try:
-            order_dict = order.model_dump(mode="json")
+            order_dict = order.model_dump(mode="json")  # type: ignore[attr-defined]
             frame = pd.DataFrame([order_dict])
             _validate_or_raise(frame)
 
@@ -128,7 +128,7 @@ def create_app(config: dict | None = None) -> FastAPI:
                 detail=f"Batch size {len(orders)} exceeds max_batch_size {max_batch_size}",
             )
         try:
-            order_dicts = [o.model_dump(mode="json") for o in orders]
+            order_dicts = [o.model_dump(mode="json") for o in orders]  # type: ignore[attr-defined]
             frame = pd.DataFrame(order_dicts)
             _validate_or_raise(frame)
 

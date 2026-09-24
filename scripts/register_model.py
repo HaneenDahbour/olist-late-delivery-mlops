@@ -22,8 +22,8 @@ import sys
 # console codepage (cp1252) can't encode it and raises UnicodeEncodeError
 # right as the run is closing, after the model was already registered.
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
 os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
 
