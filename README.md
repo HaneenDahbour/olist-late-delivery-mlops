@@ -1,5 +1,7 @@
 ﻿# Olist Late Delivery Prediction - MLOps Project
 
+[![CI](https://github.com/HaneenDahbour/olist-late-delivery-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/HaneenDahbour/olist-late-delivery-mlops/actions/workflows/ci.yml)
+
 End-to-end MLOps project using the Brazilian E-Commerce Public Dataset by Olist.
 
 ## Objective
@@ -192,13 +194,15 @@ and is reported honestly in `GET /model/info`'s `artifact_source` field
 | `app/main.py` | The FastAPI app: `/health`, `/model/info`, `/predict`, `/predict/batch`, `/metrics` (Prometheus). |
 | `scripts/register_model.py` | Loads the frozen local artifacts and registers them as one MLflow run + model version. Run once (or whenever the frozen model changes) — not part of the request path. |
 | `Dockerfile` | Builds the API image: installs `requirements.txt` only (no notebook/dev tooling), copies `src/`, `app/`, `config/`, `scripts/`. |
-| `docker-compose.yml` | The full local stack: `postgres`, `minio`, `create-bucket` (one-off), `mlflow`, `register-model` (one-off), `api`. |
+| `docker-compose.yml` | The full local stack: `postgres`, `minio`, `create-bucket` (one-off), `dvc-pull` (one-off), `mlflow`, `register-model` (one-off), `api`. |
 | `docker/mlflow.Dockerfile` | A minimal MLflow server image (mlflow + boto3 + psycopg, pinned to the same versions as `requirements.txt`). |
+| `docker/dvc.Dockerfile` | Runs `dvc pull` inside the compose network (MinIO is `http://minio:9000` there, not `localhost:9000`) before `register-model` starts. Best-effort: exits 0 even if the remote is empty/unreachable, so it never blocks the pipeline when the real files are already on disk some other way (e.g. a submission zip). |
 | `.dvc/config`, `*.dvc` files | DVC tracks `data/processed/*.parquet` and `artifacts/*` as content-addressed pointers, with MinIO as the remote. Actual bytes are never in Git; `dvc pull` fetches them. |
 | `tests/` | `test_config.py`, `test_features.py` (pure unit tests, no external files needed), `test_notebook_parity.py`, `test_predict.py`, `test_api.py` (need the local artifacts/data — see below), `test_validation.py`, `conftest.py` (the skip logic that makes the previous point work). |
-| `.github/workflows/ci.yml` | Runs ruff, black --check, mypy, and pytest on every push/PR. |
+| `.github/workflows/ci.yml` | Runs ruff, black --check, mypy, and pytest on every push/PR, then builds the API image and pushes it to GHCR (only from `main`, using the automatic `GITHUB_TOKEN`). |
 | `.pre-commit-config.yaml` | Same three checks as local git hooks. |
 | `requirements.txt` / `requirements-dev.txt` | Runtime-only vs. runtime+notebook+test+lint tooling. The Docker image installs only `requirements.txt`. |
+| `MONITORING.md` | What's actually live (Prometheus counters, prediction logs) vs. decided-but-not-wired (latency/error-rate/drift alert thresholds, with the reasoning for each) — the "decide what you would alert on, write it down" deliverable. |
 
 ### `config/config.yaml` field by field
 
@@ -231,23 +235,23 @@ feature_contract:     # numeric_features / categorical_features / timestamp_feat
 git clone <this-repo>
 cd mlops-olist
 cp .env.example .env
-export AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin123   # for dvc pull below
-pip install dvc[s3]==3.67.1   # or use a venv with requirements-dev.txt
-dvc pull                       # fetches data/processed/*.parquet and artifacts/* from MinIO —
-                                # but MinIO isn't up yet on a truly fresh machine; see note below
 docker compose up -d --build
 curl http://localhost:8000/health
 curl http://localhost:8000/model/info
 ```
 
-**Note on the chicken-and-egg with `dvc pull`**: DVC's remote *is* the docker-compose MinIO
-service, so on a machine that has never run this stack before, `dvc pull` has nothing to pull from
-until `docker compose up -d minio create-bucket` has run once and something has `dvc push`ed to it.
-In practice this means: whoever trains the model (Task 2) runs `dvc push` once after `docker
-compose up -d minio create-bucket`; everyone else just runs `docker compose up -d --build` and
-`dvc pull` against that same MinIO. This repo's `artifacts/` and `data/processed/` are already
-pushed — a teammate cloning this exact repo only needs `docker compose up -d` (to bring MinIO up)
-then `dvc pull`, in that order.
+That's genuinely the whole thing — one command after the one-time `.env` copy. A `dvc-pull`
+service inside the compose stack itself fetches `data/processed/*.parquet` and `artifacts/*` from
+MinIO before `register-model` runs, so no separate manual `dvc pull` is needed. Verified twice: on
+a fresh `git clone` into a directory reusing this machine's already-populated MinIO volume, and
+(harder test) on a copy with zero prior state at all — no `.git`, no DVC remote, MinIO started
+empty — where `dvc-pull` fails fast and the pipeline still boots because the real files were
+already on disk (see the zip-delivery note in [Known limitations](#known-limitations-honest-not-hidden)).
+
+The one real prerequisite: **something** has to have run `dvc push` against this artifact store at
+least once — same as any real S3 bucket doesn't spontaneously contain your model either. This
+repo's `artifacts/` and `data/processed/` are already pushed to this project's MinIO volume; a
+teammate cloning it on the same machine/Docker host reuses that volume automatically.
 
 ### Option B — API only, without Docker (needs `artifacts/` and `data/processed/` present locally)
 
@@ -268,8 +272,9 @@ for this option, at the cost of not proving the registry path.
 ```bash
 docker compose up -d --build
 ```
-Verified: all five services (`postgres`, `minio`, `mlflow`, plus the one-off `create-bucket` and
-`register-model`) report healthy/completed, and `api` comes up healthy after them.
+Verified: the four long-running services (`postgres`, `minio`, `mlflow`, `api`) report healthy, and
+the three one-off jobs (`create-bucket`, `dvc-pull`, `register-model`) complete successfully before
+`api` starts.
 
 **2. A prediction with probability and model version.**
 ```bash
@@ -332,8 +337,13 @@ no negation. Re-verified on a second fresh clone: `dvc pull` now checks out all 
 - **Monitoring thresholds in `config.yaml` (`drift_check_window_days`, `latency_alert_ms`,
   `error_rate_alert_pct`) are not wired to an alerting system.** They're read by nothing yet; the
   `/metrics` endpoint exposes the raw Prometheus counters/histograms a future alert rule would use.
-- **CI has not yet run on GitHub** — the workflow file exists and every check it runs was
-  independently verified locally, but nothing has been pushed yet, by design (held for review).
+- **A zipped/offline copy of this repo has no `.git` and no access to this machine's MinIO.**
+  `dvc-pull` fails fast in that case (by design — see its Dockerfile) and the pipeline still boots
+  because a zip built for submission includes the real `data/processed/*.parquet` and `artifacts/*`
+  files directly, not just their `.dvc` pointers. Verified: extracted such a zip fresh, ran
+  `pytest` standalone (32/32 passed, no git/DVC involved), then `docker compose up -d --build`
+  under a brand-new project name with an empty MinIO volume — all four services came up healthy and
+  served a correct prediction.
 - **Model-dependent tests need local artifacts.** `test_notebook_parity.py`, `test_predict.py`,
   and `test_api.py` skip (with an explicit reason, not silently) when `artifacts/*` and
   `data/processed/*.parquet` aren't present — which is always true in CI today, since nothing
