@@ -15,6 +15,11 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
+# Without this, `from tests.conftest import ...` only resolves when
+# invoked as `python -m pytest` (which inserts cwd into sys.path) — a
+# bare `pytest` invocation (e.g. GitHub Actions' default) fails with
+# ModuleNotFoundError: No module named 'tests'.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
