@@ -88,3 +88,4 @@ data/processed/*.parquet
 # ==============================
 artifacts/*
 !artifacts/.gitkeep
+!artifacts/*.dvc

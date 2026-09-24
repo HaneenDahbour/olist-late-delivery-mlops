@@ -1,0 +1,5 @@
+outs:
+- md5: 8dc135debe74c08fbbc9fffa879ff6fc
+  size: 21975102
+  hash: md5
+  path: orders_joined.parquet

@@ -1,0 +1,5 @@
+outs:
+- md5: 842cba5e941b55ee561c4e0f2d9abdc6
+  size: 8091
+  hash: md5
+  path: notebook6_trained_model.joblib

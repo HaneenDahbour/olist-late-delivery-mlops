@@ -1,0 +1,5 @@
+outs:
+- md5: 5b1848536339717d65323b9f413c1fc3
+  size: 2902
+  hash: md5
+  path: notebook6_results.json

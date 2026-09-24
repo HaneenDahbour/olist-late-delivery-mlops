@@ -1,0 +1,6 @@
+[core]
+    analytics = false
+    remote = artifact-store
+['remote "artifact-store"']
+    url = s3://olist-mlops-artifacts/dvc
+    endpointurl = http://localhost:9000

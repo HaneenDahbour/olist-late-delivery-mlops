@@ -1,0 +1,5 @@
+outs:
+- md5: e0ab2c3039bb80f6754e578e353d9014
+  size: 1157
+  hash: md5
+  path: notebook5_manifest.json

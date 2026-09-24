@@ -1,0 +1,5 @@
+outs:
+- md5: 0eae7316832a567486cfcd8e745fa662
+  size: 13223
+  hash: md5
+  path: notebook5_preprocessor.joblib
