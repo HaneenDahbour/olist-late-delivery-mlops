@@ -69,7 +69,9 @@ def main() -> None:
         )
         mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items()})
 
-        sample_input = None  # signature inference needs a real frame; skip for a frozen sklearn artifact
+        sample_input = (
+            None  # signature inference needs a real frame; skip for a frozen sklearn artifact
+        )
         signature = None
         try:
             import numpy as np
@@ -106,11 +108,25 @@ def main() -> None:
     versions = client.search_model_versions(f"name='{mlflow_cfg['registry_model_name']}'")
     this_version = next(v for v in versions if v.run_id == run_id)
 
+    # Archive older versions one at a time instead of passing
+    # archive_existing_versions=True: that option's internal
+    # "version != current" query hits a real MLflow/psycopg3 bug
+    # (int/varchar type mismatch) against a Postgres backend store.
+    for other in versions:
+        if (
+            other.version != this_version.version
+            and other.current_stage == mlflow_cfg["registry_stage"]
+        ):
+            client.transition_model_version_stage(
+                name=mlflow_cfg["registry_model_name"],
+                version=other.version,
+                stage="Archived",
+            )
+
     client.transition_model_version_stage(
         name=mlflow_cfg["registry_model_name"],
         version=this_version.version,
         stage=mlflow_cfg["registry_stage"],
-        archive_existing_versions=True,
     )
 
     logger.info(

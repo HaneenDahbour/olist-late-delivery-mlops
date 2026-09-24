@@ -18,7 +18,7 @@ from olist_mlops.artifacts import load_artifacts
 from olist_mlops.config import load_config
 from olist_mlops.logging_setup import configure_logging
 from olist_mlops.predict import PredictionService
-from olist_mlops.prediction_log import log_prediction
+from olist_mlops.prediction_log import ensure_prediction_log_table, log_prediction
 from olist_mlops.schemas import (
     BatchPredictionResponse,
     HealthResponse,
@@ -43,6 +43,14 @@ def create_app(config: dict | None = None) -> FastAPI:
     artifacts = load_artifacts(config)
     service = PredictionService(artifacts, config)
     OrderRequest = build_order_request_model(config["feature_contract"])
+
+    if config["monitoring"]["prediction_log_backend"] == "postgres":
+        try:
+            ensure_prediction_log_table(config)
+        except Exception as exc:  # noqa: BLE001 - startup must not crash if DB isn't up yet
+            logger.warning(
+                "Could not ensure prediction_log table exists (%s); file logging still works", exc
+            )
 
     app = FastAPI(
         title=config["api"]["title"],

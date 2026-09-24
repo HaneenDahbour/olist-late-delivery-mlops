@@ -38,6 +38,7 @@ mlartifacts/
 .env
 *.env
 .env.*
+!.env.example
 
 # ==============================
 # Jupyter

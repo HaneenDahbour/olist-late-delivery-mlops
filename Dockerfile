@@ -15,6 +15,7 @@ COPY pyproject.toml .
 COPY src/ src/
 COPY app/ app/
 COPY config/ config/
+COPY scripts/ scripts/
 RUN pip install --no-cache-dir --no-deps -e .
 
 ENV PYTHONUNBUFFERED=1
