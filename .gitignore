@@ -87,6 +87,11 @@ data/processed/*.parquet
 # ==============================
 # Task 2 generated notebook artifacts
 # ==============================
-artifacts/*
-!artifacts/.gitkeep
-!artifacts/*.dvc
+# Ignored by extension, not by a blanket "artifacts/*" + negation: DVC's
+# own ignore-matcher (unlike git's) prunes a whole directory once a glob
+# matches its contents, so a negated `!artifacts/*.dvc` never got scanned
+# by `dvc push`/`pull` — they silently saw only data/processed. Extension
+# patterns need no negation, so both git and dvc see the .dvc files.
+artifacts/*.joblib
+artifacts/*.json
+artifacts/*.parquet
